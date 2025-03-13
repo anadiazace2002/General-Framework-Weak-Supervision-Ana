@@ -241,8 +241,8 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
             
         inputs = torch.cat((x_w, x_s))
         true_outputs = self.model(inputs)
-        logits_x_w, logits_x_s = true_outputs.chunk(2)
-        noise_matrix = self.noise_model(logits_x_w)
+        logits_x_w, logits_x_s = true_outputs.chunk(2)    # logits computation
+        noise_matrix = self.noise_model(logits_x_w)       # noise matrix creation
         # noise_matrix *= 2
         
         # convert logits_w to probs
@@ -254,32 +254,32 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         # compute forward-backward on graph x_w
         with torch.no_grad():
             # model p(y_hat | y, x) p(y|x)
-            noise_matrix_col = noise_matrix.softmax(dim=-1)[:, y].detach().transpose(0, 1)
-            em_y = probs_x_w * noise_matrix_col
-            em_y = em_y / em_y.sum(dim=1, keepdim=True)
+            noise_matrix_col = noise_matrix.softmax(dim=-1)[:, y].detach().transpose(0, 1)     # we only need the columny_hat of the matrix
+            em_y = probs_x_w * noise_matrix_col                                                # compute p(y|A_w(x), y_hat; θ, ω^t)
+            em_y = em_y / em_y.sum(dim=1, keepdim=True)                                        # normalize
 
-        # compute forward_backward on graph x_s
+        # compute forward_backward on graph x_s                                                compute p(y|A_s(x), y_hat; θ^t, ω^t)
         em_probs_x_s = probs_x_s * noise_matrix_col
         em_probs_x_s = em_probs_x_s / em_probs_x_s.sum(dim=1, keepdim=True)
         
         # compute observed noisy labels
         noise_matrix_row = noise_matrix.softmax(dim=0)
-        noisy_probs_x_w = torch.matmul(logits_x_w.softmax(dim=-1), noise_matrix_row)
+        noisy_probs_x_w = torch.matmul(logits_x_w.softmax(dim=-1), noise_matrix_row)           # p(y_hat|A_w(x);θ,ω)
         noisy_probs_x_w = noisy_probs_x_w / noisy_probs_x_w.sum(dim=-1, keepdims=True)
 
-        # compute noisy loss 
+        # compute noisy loss = LCE(p(y_hat|A_w(x);θ,ω),y_hat)    	y_hat --> y
         noise_loss = torch.mean(-torch.sum(F.one_hot(y, self.num_classes) * torch.log(noisy_probs_x_w), dim = -1))
         
-        # compute em loss
+        # compute em loss = LCE(p(y|A_s(x), y_hat; θ^t, ω^t), p(y|A_w(x), y_hat; θ, ω^t))
         em_loss =  torch.mean(-torch.sum(em_y * torch.log(em_probs_x_s), dim=-1), dim=-1)
         
-        # compute consistency loss
+        # compute consistency loss --> it does not appear in the formulation
         con_loss = self.ce_loss(logits_x_s, probs_x_w, reduction='mean')
         
         # total loss
         loss = noise_loss + em_loss + con_loss
         
-        # computer average entropy loss
+        # computer average entropy loss -- to make the model be more balanced in its predictions
         if self.average_entropy_loss:
             avg_prediction = torch.mean(logits_x_w.softmax(dim=-1), dim=0)
             prior_distr = 1.0/self.num_classes * torch.ones_like(avg_prediction)
