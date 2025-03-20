@@ -13,64 +13,6 @@ from src.core.hooks import CheckpointHook, TimerHook, LoggingHook, DistSamplerSe
 from src.datasets import get_sym_noisy_labels, get_cifar10_asym_noisy_labels, get_cifar100_asym_noisy_labels, get_data, get_dataloader, ImgBaseDataset, ImgTwoViewBaseDataset
 
 
-
-class NoiseMatrixLayer(torch.nn.Module):
-    def __init__(self, num_classes, scale=1.0):
-        super().__init__()
-        self.num_classes = num_classes
-        
-        self.noise_layer = nn.Linear(self.num_classes, self.num_classes, bias=False)
-        # initialization
-        self.noise_layer.weight.data.copy_(torch.eye(self.num_classes))
-        
-        init_noise_matrix = torch.eye(self.num_classes) 
-        self.noise_layer.weight.data.copy_(init_noise_matrix)
-        
-        self.eye = torch.eye(self.num_classes).cuda()
-        self.scale = scale
-    
-    def forward(self, x):
-        noise_matrix = self.noise_layer(self.eye)
-        # noise_matrix = noise_matrix ** 2
-        noise_matrix = F.normalize(noise_matrix, dim=0)
-        noise_matrix = F.normalize(noise_matrix, dim=1)
-        return noise_matrix * self.scale
-
-"""
-class NoiseParamUpdateHook(ParamUpdateHook):
-    def before_train_step(self, algorithm):
-        if hasattr(algorithm, 'start_run'):
-            torch.cuda.synchronize()
-            algorithm.start_run.record()
-
-    # call after each train_step to update parameters
-    def after_train_step(self, algorithm):
-        
-        loss = algorithm.out_dict['loss']
-        # algorithm.optimizer.zero_grad()
-        # update parameters
-        if algorithm.use_amp:
-            raise NotImplementedError
-        else:
-            loss.backward()
-            if (algorithm.clip_grad > 0):
-                torch.nn.utils.clip_grad_norm_(algorithm.model.parameters(), algorithm.clip_grad)
-            algorithm.optimizer.step()
-            algorithm.optimizer_noise.step()
-
-        algorithm.model.zero_grad()
-        algorithm.noise_model.zero_grad()
-        
-        if algorithm.scheduler is not None:
-            algorithm.scheduler.step()
-
-        if hasattr(algorithm, 'end_run'):
-            algorithm.end_run.record()
-            torch.cuda.synchronize()
-            algorithm.log_dict['train/run_time'] = algorithm.start_run.elapsed_time(algorithm.end_run) / 1000.
-"""
-
-
 class ImpreciseNoisyLabelLearning(AlgorithmBase):
     def __init__(self, args, tb_log=None, logger=None, **kwargs):
         self.init(args)
@@ -86,9 +28,8 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.noise_ratio = args.noise_ratio
         self.noise_type = args.noise_type
         self.noise_matrix_scale = args.noise_matrix_scale
-        
-        self.trans_mat = find_trans_mat(self.model)
-        self.trans_mat = find_trans_mat(self.model, self.train_dataset, self.loader_dict['train']).cuda()
+     
+        self.trans_mat = find_trans_mat(self.model, self.train_dataset, self.loader_dict['train'], args.num_classes)
 
 
 
@@ -301,13 +242,13 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         return E_calc, T_init
     
     
-    def find_trans_mat(model, train_dataset, train_loader):
+    def find_trans_mat(model, train_dataset, train_loader, num_classes):
         # estimate each component of matrix T based on training with noisy labels
         print("estimating transition matrix...")
         #output_ = torch.tensor([]).float().cuda()
         clean_label = np.array(train_dataset.true_labels)
         noisy_label = np.array(train_dataset.train_noisy_labels)
-        record = [[] for _ in range(args.num_classes)]
+        record = [[] for _ in range(num_classes)]
         # collect all the outputs
         with torch.no_grad():
             for batch_idx, (data, label,true_label,idx) in enumerate(train_loader):
@@ -385,10 +326,9 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
 
     def load_model(self, load_path):
         checkpoint = super().load_model(load_path)
-        self.noise_model.load_state_dict(checkpoint['noise_model'])
-        self.optimizer_noise.load_state_dict(checkpoint['optimizer_noise'])
-        self.print_fn("additional parameter loaded")
+        self.print_fn("Model weights loaded successfully.")
         return checkpoint
+
 
     @staticmethod
     def get_argument():
