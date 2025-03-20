@@ -126,7 +126,8 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.test_dataset = test_dataset
     
         # ✅ Now it's safe to compute trans_mat because train_dataset exists
-        self.trans_mat = find_trans_mat(self.model, self.train_dataset, self.loader_dict['train'], self.args.num_classes, self.args.max_iter, 0.1, self.args.G).cuda()
+        self.trans_mat = find_trans_mat(self.model, self.train_dataset, self.loader_dict['train'], 
+                                        self.args.num_classes, self.args.max_iter, 0.1, self.args.G).cuda()
     
         self.print_fn("Datasets and transition matrix created!")
 
@@ -263,9 +264,9 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 extracted_feature =torch.flatten(model.f(data), start_dim=1)
                 for i in range(extracted_feature.shape[0]):
                     record[label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
-        new_estimate_T, _ = get_T_global_min(args, record, clean_label,noisy_label,max_step=args.max_iter, lr = 0.1, NumTest = args.G)
+        new_estimate_T, _ = get_T_global_min(args, record, clean_label,noisy_label,max_step=max_iter, lr = 0.1, NumTest = args.G)
     
-        return torch.tensor(new_estimate_T).float().to(args.device)
+        return torch.tensor(new_estimate_T).float().cuda()
         
     # ---------------------------------------------------------------------------
     
@@ -283,21 +284,19 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
              
         # convert logits_s to probs
         probs_x_s = logits_x_s.softmax(dim=-1)
-        with torch.no_grad(): # why is it written here and not for the x_s?
-            # Compute EM estimates using the fixed transition matrix
-            noise_matrix_col = noise_matrix[:, y].detach().transpose(0, 1)
-            em_y = probs_x_w * noise_matrix_col                                # compute p(y|A_w(x), y_hat; θ, ω^t)
-            em_y = em_y / em_y.sum(dim=1, keepdim=True)
+        # Compute EM estimates using the fixed transition matrix
+        noise_matrix_col = noise_matrix[:, y].detach().transpose(0, 1)
+        em_y = probs_x_w * noise_matrix_col                                # compute p(y|A_w(x), y_hat; θ, ω^t)
+        em_y = em_y / em_y.sum(dim=1, keepdim=True)
 
         # compute forward_backward on graph x_s
-        em_probs_x_s = probs_x_s * noise_matrix_col
+        em_probs_x_s = probs_x_s * noise_matrix_col                                # compute p(y|A_s(x), y_hat; θ, ω^t)
         em_probs_x_s = em_probs_x_s / em_probs_x_s.sum(dim=1, keepdim=True)
 
-        with torch.no_grad():
-            # Compute noisy loss using the fixed transition matrix
-            noise_matrix_row = noise_matrix
-            noisy_probs_x_w = torch.matmul(probs_x_w, noise_matrix_row)                        # p(y_hat|A_w(x);θ,ω)
-            noisy_probs_x_w = noisy_probs_x_w / noisy_probs_x_w.sum(dim=-1, keepdims=True)
+        # Compute noisy loss using the fixed transition matrix
+        noise_matrix_row = noise_matrix
+        noisy_probs_x_w = torch.matmul(probs_x_w, noise_matrix_row)                        # p(y_hat|A_w(x);θ,ω)
+        noisy_probs_x_w = noisy_probs_x_w / noisy_probs_x_w.sum(dim=-1, keepdims=True)
 
         # compute noisy loss = LCE(p(y_hat|A_w(x);θ,ω),y_hat)    	y_hat --> y
         noise_loss = torch.mean(-torch.sum(F.one_hot(y, self.num_classes) * torch.log(noisy_probs_x_w), dim=-1))
@@ -330,11 +329,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         save_dict['trans_mat'] = self.trans_mat.cpu().numpy()  # Save fixed transition matrix
         return save_dict
 
-
-    def load_model(self, load_path):
-        checkpoint = super().load_model(load_path)
-        self.print_fn("Model weights loaded successfully.")
-        return checkpoint
 
 
     @staticmethod
