@@ -205,7 +205,9 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                                       num_classes=self.num_classes, is_train=False,
                                       img_size=self.args.img_size, crop_ratio=self.args.crop_ratio, resize=test_resize,
                                       return_keys=['x', 'y'])
+        
         train_dataset.true_labels = train_targets
+        train_dataset.noisy_labels = train_noisy_targets  
         self.train_dataset = train_dataset  # ✅ Now train_dataset is set
         self.test_dataset = test_dataset
     
