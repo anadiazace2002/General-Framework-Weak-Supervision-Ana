@@ -1,4 +1,4 @@
-
+f
 
 import os
 import torch 
@@ -62,7 +62,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
 
     # Functions for the instance-dependent noise transition matrix 
 
-    def get_TP_real(num_classes,clean_label,noisy_label):
+    def get_TP_real(self, num_classes,clean_label,noisy_label):
         T_real = np.zeros((num_classes,num_classes))
         for i in range(clean_label.shape[0]):
             T_real[clean_label[i]][noisy_label[i]] += 1
@@ -74,7 +74,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         print(f'Check: P = {P_real},\n T = \n{np.round(T_real,3)}')
         return T_real, P_real
 
-    def get_T_global_min(args, record, clean_label,noisy_label,max_step = 501, T0 = None, p0 = None, lr = 0.1, NumTest = 50, all_point_cnt = 15000):
+    def get_T_global_min(self, args, record, clean_label,noisy_label,max_step = 501, T0 = None, p0 = None, lr = 0.1, NumTest = 50, all_point_cnt = 15000):
         total_len = sum([len(a) for a in record])
         origin_trans = torch.zeros(total_len, record[0][0]['feature'].shape[0])
         origin_label = torch.zeros(total_len).long()
@@ -91,7 +91,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         KINDS = args.num_classes
         # NumTest = 50
         # all_point_cnt = 15000
-        T_real, P_real = get_TP_real(args.num_classes,clean_label,noisy_label)
+        T_real, P_real = self.get_TP_real(args.num_classes,clean_label,noisy_label)
     
         p_estimate = [[] for _ in range(3)]
         p_estimate[0] = torch.zeros(KINDS)
@@ -135,7 +135,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 extracted_feature =torch.flatten(model.f(data), start_dim=1)
                 for i in range(extracted_feature.shape[0]):
                     record[label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
-        new_estimate_T, _ = get_T_global_min(args, record, clean_label,noisy_label,max_step=max_iter, lr = 0.1, NumTest = args.G)
+        new_estimate_T, _ = self.get_T_global_min(args, record, clean_label,noisy_label,max_step=max_iter, lr = 0.1, NumTest = args.G)
     
         return torch.tensor(new_estimate_T).float().cuda()
         
