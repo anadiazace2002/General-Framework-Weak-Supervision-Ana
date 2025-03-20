@@ -87,9 +87,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.noise_type = args.noise_type
         self.noise_matrix_scale = args.noise_matrix_scale
         
-        self.noise_model = NoiseMatrixLayer(num_classes=args.num_classes, scale=self.noise_matrix_scale)
-        self.noise_model = send_model_cuda(args, self.noise_model)
-        self.optimizer_noise = torch.optim.SGD(self.noise_model.parameters(), lr=args.lr, weight_decay=0, momentum=0)
+        self.trans_mat = find_trans_mat(self.model)
 
 
     def set_hooks(self):
@@ -327,7 +325,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         true_outputs = self.model(inputs)
         logits_x_w, logits_x_s = true_outputs.chunk(2)    # logits computation
         # noise_matrix = self.noise_model(logits_x_w)       # noise matrix creation BEFORE
-        noise_matrix = find_trans_mat(model)
+        noise_matrix = self.trans_mat
         # noise_matrix *= 2
         
         # convert logits_w to probs
