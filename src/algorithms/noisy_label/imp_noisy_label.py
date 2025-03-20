@@ -128,7 +128,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         #output_ = torch.tensor([]).float().cuda()
         clean_label = np.array(self.train_dataset.true_labels) 
         noisy_label = np.array(self.train_dataset.noisy_labels)
-        loader_dict = self.set_data_loader()
         record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
         with torch.no_grad():
