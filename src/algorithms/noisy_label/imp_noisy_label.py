@@ -57,7 +57,90 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         else:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(self.epochs * len(self.loader_dict['train'])), eta_min=2e-4)
         return optimizer, scheduler
+        
+    # --------------------------------------------------------------------------------------------------
 
+    # Functions for the instance-dependent noise transition matrix 
+
+    def get_TP_real(num_classes,clean_label,noisy_label):
+        T_real = np.zeros((num_classes,num_classes))
+        for i in range(clean_label.shape[0]):
+            T_real[clean_label[i]][noisy_label[i]] += 1
+        P_real = [sum(T_real[i])*1.0 for i in range(num_classes)] # random selection
+        for i in range(num_classes):
+            if P_real[i]>0:
+                T_real[i] /= P_real[i]
+        P_real = np.array(P_real)/sum(P_real)
+        print(f'Check: P = {P_real},\n T = \n{np.round(T_real,3)}')
+        return T_real, P_real
+
+    def get_T_global_min(args, record, clean_label,noisy_label,max_step = 501, T0 = None, p0 = None, lr = 0.1, NumTest = 50, all_point_cnt = 15000):
+        total_len = sum([len(a) for a in record])
+        origin_trans = torch.zeros(total_len, record[0][0]['feature'].shape[0])
+        origin_label = torch.zeros(total_len).long()
+        cnt, lb = 0, 0
+        for item in record:
+            for i in item:
+                origin_trans[cnt] = i['feature']
+                origin_label[cnt] = lb
+                cnt += 1
+            lb += 1
+        data_set = {'feature': origin_trans, 'noisy_label': origin_label}
+    
+        # Build Feature Clusters --------------------------------------
+        KINDS = args.num_classes
+        # NumTest = 50
+        # all_point_cnt = 15000
+        T_real, P_real = get_TP_real(args.num_classes,clean_label,noisy_label)
+    
+        p_estimate = [[] for _ in range(3)]
+        p_estimate[0] = torch.zeros(KINDS)
+        p_estimate[1] = torch.zeros(KINDS, KINDS)
+        p_estimate[2] = torch.zeros(KINDS, KINDS, KINDS)
+        p_estimate_rec = torch.zeros(NumTest, 3)
+        for idx in range(NumTest):
+            print(idx, flush=True)
+            # global
+            sample = np.random.choice(range(data_set['feature'].shape[0]), all_point_cnt, replace=False)
+            # final_feat, noisy_label = get_feat_clusters(data_set, sample)
+            final_feat = data_set['feature'][sample]
+            noisy_label = data_set['noisy_label'][sample]
+            cnt_y_3 = count_y(KINDS, final_feat, noisy_label, all_point_cnt)
+            for i in range(3):
+                cnt_y_3[i] /= all_point_cnt
+                p_estimate[i] = p_estimate[i] + cnt_y_3[i] if idx != 0 else cnt_y_3[i]
+        for j in range(3):
+            p_estimate[j] = p_estimate[j] / NumTest
+    
+        args.device = set_device()
+        loss_min, E_calc, P_calc, T_init = calc_func(KINDS, p_estimate, False, args.device, max_step, T0, p0, lr = lr)
+    
+        E_calc = E_calc.cpu().numpy()
+        T_init = T_init.cpu().numpy()
+        print(f"L11 Error (Global): {np.sum(np.abs(E_calc - np.array(T_real))) * 1.0 / (KINDS*KINDS) * 100}")
+        return E_calc, T_init
+    
+    
+    def find_trans_mat(model, train_dataset, train_loader, num_classes, max_iter, lr, NumTest):
+        # estimate each component of matrix T based on training with noisy labels
+        print("estimating transition matrix...")
+        #output_ = torch.tensor([]).float().cuda()
+        clean_label = np.array(train_dataset.true_labels)
+        noisy_label = np.array(train_dataset.train_noisy_labels)
+        record = [[] for _ in range(num_classes)]
+        # collect all the outputs
+        with torch.no_grad():
+            for batch_idx, (data, label,true_label,idx) in enumerate(train_loader):
+                data = torch.tensor(data).float().cuda()
+                extracted_feature =torch.flatten(model.f(data), start_dim=1)
+                for i in range(extracted_feature.shape[0]):
+                    record[label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
+        new_estimate_T, _ = get_T_global_min(args, record, clean_label,noisy_label,max_step=max_iter, lr = 0.1, NumTest = args.G)
+    
+        return torch.tensor(new_estimate_T).float().cuda()
+        
+    # ---------------------------------------------------------------------------
+    
     def set_dataset(self):
         # get initial data
         train_data, train_targets, test_data, test_targets, extra_data = get_data(self.args.data_dir, self.args.dataset)
@@ -187,88 +270,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.call_hook("after_run")
 
     
-    # --------------------------------------------------------------------------------------------------
 
-    # Functions for the instance-dependent noise transition matrix 
-
-    def get_TP_real(num_classes,clean_label,noisy_label):
-        T_real = np.zeros((num_classes,num_classes))
-        for i in range(clean_label.shape[0]):
-            T_real[clean_label[i]][noisy_label[i]] += 1
-        P_real = [sum(T_real[i])*1.0 for i in range(num_classes)] # random selection
-        for i in range(num_classes):
-            if P_real[i]>0:
-                T_real[i] /= P_real[i]
-        P_real = np.array(P_real)/sum(P_real)
-        print(f'Check: P = {P_real},\n T = \n{np.round(T_real,3)}')
-        return T_real, P_real
-
-    def get_T_global_min(args, record, clean_label,noisy_label,max_step = 501, T0 = None, p0 = None, lr = 0.1, NumTest = 50, all_point_cnt = 15000):
-        total_len = sum([len(a) for a in record])
-        origin_trans = torch.zeros(total_len, record[0][0]['feature'].shape[0])
-        origin_label = torch.zeros(total_len).long()
-        cnt, lb = 0, 0
-        for item in record:
-            for i in item:
-                origin_trans[cnt] = i['feature']
-                origin_label[cnt] = lb
-                cnt += 1
-            lb += 1
-        data_set = {'feature': origin_trans, 'noisy_label': origin_label}
-    
-        # Build Feature Clusters --------------------------------------
-        KINDS = args.num_classes
-        # NumTest = 50
-        # all_point_cnt = 15000
-        T_real, P_real = get_TP_real(args.num_classes,clean_label,noisy_label)
-    
-        p_estimate = [[] for _ in range(3)]
-        p_estimate[0] = torch.zeros(KINDS)
-        p_estimate[1] = torch.zeros(KINDS, KINDS)
-        p_estimate[2] = torch.zeros(KINDS, KINDS, KINDS)
-        p_estimate_rec = torch.zeros(NumTest, 3)
-        for idx in range(NumTest):
-            print(idx, flush=True)
-            # global
-            sample = np.random.choice(range(data_set['feature'].shape[0]), all_point_cnt, replace=False)
-            # final_feat, noisy_label = get_feat_clusters(data_set, sample)
-            final_feat = data_set['feature'][sample]
-            noisy_label = data_set['noisy_label'][sample]
-            cnt_y_3 = count_y(KINDS, final_feat, noisy_label, all_point_cnt)
-            for i in range(3):
-                cnt_y_3[i] /= all_point_cnt
-                p_estimate[i] = p_estimate[i] + cnt_y_3[i] if idx != 0 else cnt_y_3[i]
-        for j in range(3):
-            p_estimate[j] = p_estimate[j] / NumTest
-    
-        args.device = set_device()
-        loss_min, E_calc, P_calc, T_init = calc_func(KINDS, p_estimate, False, args.device, max_step, T0, p0, lr = lr)
-    
-        E_calc = E_calc.cpu().numpy()
-        T_init = T_init.cpu().numpy()
-        print(f"L11 Error (Global): {np.sum(np.abs(E_calc - np.array(T_real))) * 1.0 / (KINDS*KINDS) * 100}")
-        return E_calc, T_init
-    
-    
-    def find_trans_mat(model, train_dataset, train_loader, num_classes, max_iter, lr, NumTest):
-        # estimate each component of matrix T based on training with noisy labels
-        print("estimating transition matrix...")
-        #output_ = torch.tensor([]).float().cuda()
-        clean_label = np.array(train_dataset.true_labels)
-        noisy_label = np.array(train_dataset.train_noisy_labels)
-        record = [[] for _ in range(num_classes)]
-        # collect all the outputs
-        with torch.no_grad():
-            for batch_idx, (data, label,true_label,idx) in enumerate(train_loader):
-                data = torch.tensor(data).float().cuda()
-                extracted_feature =torch.flatten(model.f(data), start_dim=1)
-                for i in range(extracted_feature.shape[0]):
-                    record[label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
-        new_estimate_T, _ = get_T_global_min(args, record, clean_label,noisy_label,max_step=max_iter, lr = 0.1, NumTest = args.G)
-    
-        return torch.tensor(new_estimate_T).float().cuda()
-        
-    # ---------------------------------------------------------------------------
     
     def train_step(self, x_w, x_s, y):    
             
