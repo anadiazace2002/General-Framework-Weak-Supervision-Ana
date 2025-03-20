@@ -126,7 +126,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         # estimate each component of matrix T based on training with noisy labels
         print("estimating transition matrix...")
         #output_ = torch.tensor([]).float().cuda()
-        clean_label = np.array(self.train_dataset.true_labels)
+        clean_label = np.array(self.train_dataset.train_targets)
         noisy_label = np.array(self.train_dataset.train_noisy_labels)
         record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
