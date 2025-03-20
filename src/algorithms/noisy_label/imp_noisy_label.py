@@ -29,7 +29,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.noise_type = args.noise_type
         self.noise_matrix_scale = args.noise_matrix_scale
      
-        self.trans_mat = find_trans_mat(self.model, self.train_dataset, self.loader_dict['train'], args.num_classes)
+        self.trans_mat = None
 
 
 
@@ -122,7 +122,14 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                                       img_size=self.args.img_size, crop_ratio=self.args.crop_ratio, resize=test_resize,
                                       return_keys=['x', 'y'])
 
-        self.print_fn("Create datasets!")
+        self.train_dataset = train_dataset  # ✅ Now train_dataset is set
+        self.test_dataset = test_dataset
+    
+        # ✅ Now it's safe to compute trans_mat because train_dataset exists
+        self.trans_mat = find_trans_mat(self.model, self.train_dataset, self.loader_dict['train'], self.args.num_classes, self.args.max_iter, 0.1, self.args.G).cuda()
+    
+        self.print_fn("Datasets and transition matrix created!")
+
         return {'train': train_dataset, 'eval': test_dataset}
 
     def set_data_loader(self):
@@ -242,7 +249,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         return E_calc, T_init
     
     
-    def find_trans_mat(model, train_dataset, train_loader, num_classes):
+    def find_trans_mat(model, train_dataset, train_loader, num_classes, max_iter, lr, NumTest):
         # estimate each component of matrix T based on training with noisy labels
         print("estimating transition matrix...")
         #output_ = torch.tensor([]).float().cuda()
