@@ -36,7 +36,7 @@ class NoiseMatrixLayer(torch.nn.Module):
         noise_matrix = F.normalize(noise_matrix, dim=1)
         return noise_matrix * self.scale
 
-
+"""
 class NoiseParamUpdateHook(ParamUpdateHook):
     def before_train_step(self, algorithm):
         if hasattr(algorithm, 'start_run'):
@@ -68,7 +68,7 @@ class NoiseParamUpdateHook(ParamUpdateHook):
             algorithm.end_run.record()
             torch.cuda.synchronize()
             algorithm.log_dict['train/run_time'] = algorithm.start_run.elapsed_time(algorithm.end_run) / 1000.
-
+"""
 
 
 class ImpreciseNoisyLabelLearning(AlgorithmBase):
@@ -92,7 +92,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
 
     def set_hooks(self):
         # parameter update hook is called inside each train_step
-        self.register_hook(NoiseParamUpdateHook(), None, "HIGHEST")
+        # self.register_hook(NoiseParamUpdateHook(), None, "HIGHEST")   our transition is fixed
         if self.ema_model is not None:
             self.register_hook(EMAHook(), None, "HIGH")
         self.register_hook(EvaluationHook(), None, "HIGH")
