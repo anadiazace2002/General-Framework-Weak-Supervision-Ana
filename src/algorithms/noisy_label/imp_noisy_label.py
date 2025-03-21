@@ -22,6 +22,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.num_eval_iter = len(self.loader_dict['train'])
         self.ce_loss = CELoss()
         self.dataset_dict = self.set_dataset()
+        self.loader_dict = self.set_data_loader()
     
     def init(self, args):
         # extra arguments 
