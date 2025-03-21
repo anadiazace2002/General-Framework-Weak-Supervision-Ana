@@ -18,11 +18,11 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.init(args)
         super().__init__(args, tb_log, logger, **kwargs)
         
+        self.loader_dict = self.set_data_loader()
         self.num_train_iter = self.epochs * len(self.loader_dict['train'])
         self.num_eval_iter = len(self.loader_dict['train'])
         self.ce_loss = CELoss()
         self.dataset_dict = self.set_dataset()
-        self.loader_dict = self.set_data_loader()
     
     def init(self, args):
         # extra arguments 
