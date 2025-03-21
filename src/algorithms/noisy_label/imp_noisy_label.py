@@ -16,9 +16,9 @@ from src.datasets import get_sym_noisy_labels, get_cifar10_asym_noisy_labels, ge
 class ImpreciseNoisyLabelLearning(AlgorithmBase):
     def __init__(self, args, tb_log=None, logger=None, **kwargs):
         self.init(args)
+        self.loader_dict = self.set_data_loader()
         super().__init__(args, tb_log, logger, **kwargs)
         
-        self.loader_dict = self.set_data_loader()
         self.num_train_iter = self.epochs * len(self.loader_dict['train'])
         self.num_eval_iter = len(self.loader_dict['train'])
         self.ce_loss = CELoss()
