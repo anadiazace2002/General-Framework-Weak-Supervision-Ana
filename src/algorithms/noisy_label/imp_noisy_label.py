@@ -31,8 +31,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.noise_ratio = args.noise_ratio
         self.noise_type = args.noise_type
         self.noise_matrix_scale = args.noise_matrix_scale
-        
-        self.noise_model = None
 
 
 
@@ -213,9 +211,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.train_dataset = train_dataset  # ✅ Now train_dataset is set
         self.test_dataset = test_dataset
     
-        # ✅ Now it's safe to compute trans_mat because train_dataset exists
-        self.noise_model = self.find_trans_mat(0.1).cuda()
-    
         self.print_fn("Datasets and transition matrix created!")
 
         return {'train': train_loader, 'eval': test_loader}
@@ -282,7 +277,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         true_outputs = self.model(inputs)
         logits_x_w, logits_x_s = true_outputs.chunk(2)    # logits computation
         # noise_matrix = self.noise_model(logits_x_w)       # noise matrix creation BEFORE
-        noise_matrix = self.noise_model
+        noise_matrix = self.find_trans_mat(0.1).cuda()
         # noise_matrix *= 2
         
         # convert logits_w to probs
@@ -332,7 +327,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
 
     def get_save_dict(self):
         save_dict = super().get_save_dict()
-        save_dict['noise_model'] = self.noise_model.cpu().numpy()  # Save fixed transition matrix
+        # save_dict['noise_model'] = self.noise_model.cpu().numpy()  # Save fixed transition matrix
         return save_dict
 
 
