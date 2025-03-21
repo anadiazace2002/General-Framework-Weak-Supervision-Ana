@@ -213,7 +213,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
     
         self.print_fn("Datasets and transition matrix created!")
 
-        return {'train': train_loader, 'eval': test_loader}
+        return {'train': train_dataset, 'eval': test_dataset}
         
     def set_data_loader(self):
         loader_dict = {}
