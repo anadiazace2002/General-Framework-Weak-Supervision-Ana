@@ -145,7 +145,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 noisy_label = y
             
                 # Accedemos a las etiquetas verdaderas y las ruidosas
-                true_label = train_dataset.true_labels[batch_idx]  # O como accedas a las etiquetas verdaderas
+                true_label = self.train_dataset.true_labels[batch_idx]  # O como accedas a las etiquetas verdaderas
                 
                 # Variable para contar el índice global de las imágenes
                 global_idx = 0  # Este será el índice global de las imágenes
