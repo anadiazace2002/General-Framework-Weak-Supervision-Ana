@@ -152,10 +152,29 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 
                 # Usamos la vista 'x_w' (o 'x_s', dependiendo de tu elección)
                 data = x_w  # O también podrías usar `x_s` en lugar de `x_w` si lo prefieres
-            
+                # Hook function to capture the features
+
+                features = []
+                
+                def hook_fn(module, input, output):
+                    print(f"Inside hook: {output.shape}")  # This prints the shape of the output when the hook is triggered
+                    features.append(output)
+                
+                # Register the hook on the last layer (layer4) before the fully connected layer
+                hook = model.layer4[1].register_forward_hook(hook_fn)  # Adjust this based on your model's structure
+                
+                # Create dummy input and perform a forward pass
+                data = torch.randn(1, 3, 32, 32).cuda()  # Example input tensor
+                output = model(data)  # Perform the forward pass
+                
+                # Check if the features are being captured
+                print("Captured features: ", features[0].shape)  # This should print the shape of the features from layer4
+                
+                # Don't forget to remove the hook once you're done
+                hook.remove()
                 # Asegúrate de que los datos estén en el formato adecuado
                 data = torch.tensor(data).float().cuda()
-            
+                
                 # Extraemos las características con la red
                 extracted_feature = torch.flatten(self.model.module.forward(data), start_dim=1)
             
