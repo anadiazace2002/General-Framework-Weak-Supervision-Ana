@@ -13,13 +13,68 @@ from src.core.hooks import CheckpointHook, TimerHook, LoggingHook, DistSamplerSe
 from src.datasets import get_sym_noisy_labels, get_cifar10_asym_noisy_labels, get_cifar100_asym_noisy_labels, get_data, get_dataloader, ImgBaseDataset, ImgTwoViewBaseDataset
 
 
+
+class NoiseMatrixLayer(torch.nn.Module):
+    def __init__(self, num_classes, scale=1.0):
+        super().__init__()
+        self.num_classes = num_classes
+        
+        self.noise_layer = nn.Linear(self.num_classes, self.num_classes, bias=False)
+        # initialization
+        self.noise_layer.weight.data.copy_(torch.eye(self.num_classes))
+        
+        init_noise_matrix = torch.eye(self.num_classes) 
+        self.noise_layer.weight.data.copy_(init_noise_matrix)
+        
+        self.eye = torch.eye(self.num_classes).cuda()
+        self.scale = scale
+    
+    def forward(self, x):
+        noise_matrix = self.noise_layer(self.eye)
+        # noise_matrix = noise_matrix ** 2
+        noise_matrix = F.normalize(noise_matrix, dim=0)
+        noise_matrix = F.normalize(noise_matrix, dim=1)
+        return noise_matrix * self.scale
+
+
+class NoiseParamUpdateHook(ParamUpdateHook):
+    def before_train_step(self, algorithm):
+        if hasattr(algorithm, 'start_run'):
+            torch.cuda.synchronize()
+            algorithm.start_run.record()
+
+    # call after each train_step to update parameters
+    def after_train_step(self, algorithm):
+        
+        loss = algorithm.out_dict['loss']
+        # algorithm.optimizer.zero_grad()
+        # update parameters
+        if algorithm.use_amp:
+            raise NotImplementedError
+        else:
+            loss.backward()
+            if (algorithm.clip_grad > 0):
+                torch.nn.utils.clip_grad_norm_(algorithm.model.parameters(), algorithm.clip_grad)
+            algorithm.optimizer.step()
+            algorithm.optimizer_noise.step()
+
+        algorithm.model.zero_grad()
+        algorithm.noise_model.zero_grad()
+        
+        if algorithm.scheduler is not None:
+            algorithm.scheduler.step()
+
+        if hasattr(algorithm, 'end_run'):
+            algorithm.end_run.record()
+            torch.cuda.synchronize()
+            algorithm.log_dict['train/run_time'] = algorithm.start_run.elapsed_time(algorithm.end_run) / 1000.
+
+
+
 class ImpreciseNoisyLabelLearning(AlgorithmBase):
     def __init__(self, args, tb_log=None, logger=None, **kwargs):
         self.init(args)
-
         super().__init__(args, tb_log, logger, **kwargs)
-        self.dataset_dict = self.set_dataset()
-        self.loader_dict = self.set_data_loader()
         
         self.num_train_iter = self.epochs * len(self.loader_dict['train'])
         self.num_eval_iter = len(self.loader_dict['train'])
@@ -29,14 +84,17 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         # extra arguments 
         self.average_entropy_loss = args.average_entropy_loss
         self.noise_ratio = args.noise_ratio
-        self.noise_type = args.noise_type
+        self.noise_type =args.noise_type
         self.noise_matrix_scale = args.noise_matrix_scale
-
+        
+        self.noise_model = NoiseMatrixLayer(num_classes=args.num_classes, scale=self.noise_matrix_scale)
+        self.noise_model = send_model_cuda(args, self.noise_model)
+        self.optimizer_noise = torch.optim.SGD(self.noise_model.parameters(), lr=args.lr, weight_decay=0, momentum=0)
 
 
     def set_hooks(self):
         # parameter update hook is called inside each train_step
-        # self.register_hook(NoiseParamUpdateHook(), None, "HIGHEST")   our transition is fixed
+        self.register_hook(NoiseParamUpdateHook(), None, "HIGHEST")
         if self.ema_model is not None:
             self.register_hook(EMAHook(), None, "HIGH")
         self.register_hook(EvaluationHook(), None, "HIGH")
@@ -58,99 +116,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         else:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(self.epochs * len(self.loader_dict['train'])), eta_min=2e-4)
         return optimizer, scheduler
-        
-    # --------------------------------------------------------------------------------------------------
 
-    # Functions for the instance-dependent noise transition matrix 
-
-    def get_TP_real(self, clean_label, noisy_label):
-        T_real = np.zeros((self.num_classes,self.num_classes))
-        for i in range(clean_label.shape[0]):
-            T_real[clean_label[i]][noisy_label[i]] += 1
-        P_real = [sum(T_real[i])*1.0 for i in range(self.num_classes)] # random selection
-        for i in range(self.num_classes):
-            if P_real[i]>0:
-                T_real[i] /= P_real[i]
-        P_real = np.array(P_real)/sum(P_real)
-        print(f'Check: P = {P_real},\n T = \n{np.round(T_real,3)}')
-        return T_real, P_real
-
-    def get_T_global_min(self, record, clean_label,noisy_label, max_step = 501, T0 = None, p0 = None, lr = 0.1, NumTest = 50, all_point_cnt = 15000):
-        total_len = sum([len(a) for a in record])
-        origin_trans = torch.zeros(total_len, record[0][0]['feature'].shape[0])
-        origin_label = torch.zeros(total_len).long()
-        cnt, lb = 0, 0
-        for item in record:
-            for i in item:
-                origin_trans[cnt] = i['feature']
-                origin_label[cnt] = lb
-                cnt += 1
-            lb += 1
-        data_set = {'feature': origin_trans, 'noisy_label': origin_label}
-    
-        # Build Feature Clusters --------------------------------------
-        KINDS = self.num_classes
-        # NumTest = 50
-        # all_point_cnt = 15000
-        T_real, P_real = self.get_TP_real(clean_label,noisy_label)
-    
-        p_estimate = [[] for _ in range(3)]
-        p_estimate[0] = torch.zeros(KINDS)
-        p_estimate[1] = torch.zeros(KINDS, KINDS)
-        p_estimate[2] = torch.zeros(KINDS, KINDS, KINDS)
-        p_estimate_rec = torch.zeros(NumTest, 3)
-        for idx in range(NumTest):
-            print(idx, flush=True)
-            # global
-            sample = np.random.choice(range(data_set['feature'].shape[0]), all_point_cnt, replace=False)
-            # final_feat, noisy_label = get_feat_clusters(data_set, sample)
-            final_feat = data_set['feature'][sample]
-            noisy_label = data_set['noisy_label'][sample]
-            cnt_y_3 = count_y(KINDS, final_feat, noisy_label, all_point_cnt)
-            for i in range(3):
-                cnt_y_3[i] /= all_point_cnt
-                p_estimate[i] = p_estimate[i] + cnt_y_3[i] if idx != 0 else cnt_y_3[i]
-        for j in range(3):
-            p_estimate[j] = p_estimate[j] / NumTest
-    
-        self.args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        loss_min, E_calc, P_calc, T_init = calc_func(KINDS, p_estimate, False, self.args.device, max_step, T0, p0, lr = lr)
-    
-        E_calc = E_calc.cpu().numpy()
-        T_init = T_init.cpu().numpy()
-        print(f"L11 Error (Global): {np.sum(np.abs(E_calc - np.array(T_real))) * 1.0 / (KINDS*KINDS) * 100}")
-        return E_calc, T_init
-    
-    
-    def find_trans_mat(self, lr):
-        # estimate each component of matrix T based on training with noisy labels
-        print("\nEstimating transition matrix...")
-        
-        batch = next(iter(self.loader_dict['train']))
-        print(type(batch))
-        print(len(batch))  # Check how many elements are returned per batch
-        
-        for i, item in enumerate(batch):
-            print(f"Batch element {i} shape: {item}")
-
-        
-        #output_ = torch.tensor([]).float().cuda()
-        clean_label = np.array(self.train_dataset.true_labels) 
-        noisy_label = np.array(self.train_dataset.noisy_labels)
-        record = [[] for _ in range(self.num_classes)]
-        # collect all the outputs
-        with torch.no_grad():
-            for batch_idx, (data, label,true_label,idx) in enumerate(self.loader_dict['train']):
-                data = torch.tensor(data).float().cuda()
-                extracted_feature = torch.flatten(self.model.f(data), start_dim=1)
-                for i in range(extracted_feature.shape[0]):
-                    record[label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
-        new_estimate_T, _ = self.get_T_global_min(record, clean_label, noisy_label, max_step=self.args.max_iter, lr = 0.1, NumTest = self.args.G)
-    
-        return torch.tensor(new_estimate_T).float().cuda()
-        
-    # ---------------------------------------------------------------------------
-    
     def set_dataset(self):
         # get initial data
         train_data, train_targets, test_data, test_targets, extra_data = get_data(self.args.data_dir, self.args.dataset)
@@ -214,18 +180,10 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                                       num_classes=self.num_classes, is_train=False,
                                       img_size=self.args.img_size, crop_ratio=self.args.crop_ratio, resize=test_resize,
                                       return_keys=['x', 'y'])
-        
-        train_dataset.true_labels = train_targets
-        train_dataset.noisy_labels = train_noisy_targets  
-        test_dataset.true_labels = test_targets
-        
-        self.train_dataset = train_dataset  # ✅ Now train_dataset is set
-        self.test_dataset = test_dataset
-    
-        self.print_fn("Datasets and transition matrix created!")
 
+        self.print_fn("Create datasets!")
         return {'train': train_dataset, 'eval': test_dataset}
-        
+
     def set_data_loader(self):
         loader_dict = {}
 
@@ -279,16 +237,12 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
 
         self.call_hook("after_run")
 
-    
-
-    
     def train_step(self, x_w, x_s, y):    
             
         inputs = torch.cat((x_w, x_s))
         true_outputs = self.model(inputs)
-        logits_x_w, logits_x_s = true_outputs.chunk(2)    # logits computation
-        # noise_matrix = self.noise_model(logits_x_w)       # noise matrix creation BEFORE
-        noise_matrix = self.find_trans_mat(0.1).cuda()
+        logits_x_w, logits_x_s = true_outputs.chunk(2)
+        noise_matrix = self.noise_model(logits_x_w)
         # noise_matrix *= 2
         
         # convert logits_w to probs
@@ -296,31 +250,36 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
              
         # convert logits_s to probs
         probs_x_s = logits_x_s.softmax(dim=-1)
-        # Compute EM estimates using the fixed transition matrix
-        noise_matrix_col = noise_matrix[:, y].detach().transpose(0, 1)
-        em_y = probs_x_w * noise_matrix_col                                # compute p(y|A_w(x), y_hat; θ, ω^t)
-        em_y = em_y / em_y.sum(dim=1, keepdim=True)
+        
+        # compute forward-backward on graph x_w
+        with torch.no_grad():
+            # model p(y_hat | y, x) p(y|x)
+            noise_matrix_col = noise_matrix.softmax(dim=-1)[:, y].detach().transpose(0, 1)
+            em_y = probs_x_w * noise_matrix_col
+            em_y = em_y / em_y.sum(dim=1, keepdim=True)
 
         # compute forward_backward on graph x_s
-        em_probs_x_s = probs_x_s * noise_matrix_col                                # compute p(y|A_s(x), y_hat; θ, ω^t)
+        em_probs_x_s = probs_x_s * noise_matrix_col
         em_probs_x_s = em_probs_x_s / em_probs_x_s.sum(dim=1, keepdim=True)
-
-        # Compute noisy loss using the fixed transition matrix
-        noise_matrix_row = noise_matrix
-        noisy_probs_x_w = torch.matmul(probs_x_w, noise_matrix_row)                        # p(y_hat|A_w(x);θ,ω)
-        noisy_probs_x_w = noisy_probs_x_w / noisy_probs_x_w.sum(dim=-1, keepdim=True)
-
-        # compute noisy loss = LCE(p(y_hat|A_w(x);θ,ω),y_hat)    	y_hat --> y
-        noise_loss = torch.mean(-torch.sum(F.one_hot(y, self.num_classes) * torch.log(noisy_probs_x_w), dim=-1))
         
-        # compute em loss = LCE(p(y|A_s(x), y_hat; θ^t, ω^t), p(y|A_w(x), y_hat; θ, ω^t))
-        em_loss = torch.mean(-torch.sum(em_y * torch.log(em_probs_x_s), dim=-1), dim=-1)
+        # compute observed noisy labels
+        noise_matrix_row = noise_matrix.softmax(dim=0)
+        noisy_probs_x_w = torch.matmul(logits_x_w.softmax(dim=-1), noise_matrix_row)
+        noisy_probs_x_w = noisy_probs_x_w / noisy_probs_x_w.sum(dim=-1, keepdims=True)
+
+        # compute noisy loss 
+        noise_loss = torch.mean(-torch.sum(F.one_hot(y, self.num_classes) * torch.log(noisy_probs_x_w), dim = -1))
+        
+        # compute em loss
+        em_loss =  torch.mean(-torch.sum(em_y * torch.log(em_probs_x_s), dim=-1), dim=-1)
+        
+        # compute consistency loss
         con_loss = self.ce_loss(logits_x_s, probs_x_w, reduction='mean')
         
-        # Total loss
+        # total loss
         loss = noise_loss + em_loss + con_loss
         
-        # computer average entropy loss -- to make the model be more balanced in its predictions
+        # computer average entropy loss
         if self.average_entropy_loss:
             avg_prediction = torch.mean(logits_x_w.softmax(dim=-1), dim=0)
             prior_distr = 1.0/self.num_classes * torch.ones_like(avg_prediction)
@@ -338,10 +297,18 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
 
     def get_save_dict(self):
         save_dict = super().get_save_dict()
-        # save_dict['noise_model'] = self.noise_model.cpu().numpy()  # Save fixed transition matrix
+        # additional saving arguments
+        save_dict['noise_model'] = self.noise_model.state_dict()
+        save_dict['optimizer_noise'] = self.optimizer_noise.state_dict()
         return save_dict
 
 
+    def load_model(self, load_path):
+        checkpoint = super().load_model(load_path)
+        self.noise_model.load_state_dict(checkpoint['noise_model'])
+        self.optimizer_noise.load_state_dict(checkpoint['optimizer_noise'])
+        self.print_fn("additional parameter loaded")
+        return checkpoint
 
     @staticmethod
     def get_argument():
