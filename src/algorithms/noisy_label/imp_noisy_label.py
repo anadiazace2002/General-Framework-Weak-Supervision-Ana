@@ -156,7 +156,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 data = torch.tensor(data).float().cuda()
             
                 # Extraemos las características con la red
-                extracted_feature = torch.flatten(self.model.f(data), start_dim=1)
+                extracted_feature = torch.flatten(self.model.module.f(data), start_dim=1)
             
                 # Crear el registro para las características extraídas
                 for i in range(extracted_feature.shape[0]):
