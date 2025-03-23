@@ -238,7 +238,13 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.call_hook("after_run")
 
     def train_step(self, x_w, x_s, y):    
-            
+        batch = next(iter(self.loader_dict['train']))
+        print(type(batch))
+        print(len(batch))  # Check how many elements are returned per batch
+        
+        for i, item in enumerate(batch):
+            print(f"Batch element {i} shape: {item.shape if hasattr(item, 'shape') else type(item)}")
+        
         inputs = torch.cat((x_w, x_s))
         true_outputs = self.model(inputs)
         logits_x_w, logits_x_s = true_outputs.chunk(2)
