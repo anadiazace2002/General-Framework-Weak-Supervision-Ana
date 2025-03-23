@@ -124,7 +124,16 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
     
     def find_trans_mat(self, lr):
         # estimate each component of matrix T based on training with noisy labels
-        print("estimating transition matrix...")
+        print("\nEstimating transition matrix...")
+        
+        batch = next(iter(self.loader_dict['train']))
+        print(type(batch))
+        print(len(batch))  # Check how many elements are returned per batch
+        
+        for i, item in enumerate(batch):
+            print(f"Batch element {i} shape: {item.shape if hasattr(item, 'shape') else type(item)}")
+
+        
         #output_ = torch.tensor([]).float().cuda()
         clean_label = np.array(self.train_dataset.true_labels) 
         noisy_label = np.array(self.train_dataset.noisy_labels)
@@ -133,7 +142,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         with torch.no_grad():
             for batch_idx, (data, label,true_label,idx) in enumerate(self.loader_dict['train']):
                 data = torch.tensor(data).float().cuda()
-                extracted_feature =torch.flatten(self.model.f(data), start_dim=1)
+                extracted_feature = torch.flatten(self.model.f(data), start_dim=1)
                 for i in range(extracted_feature.shape[0]):
                     record[label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
         new_estimate_T, _ = self.get_T_global_min(record, clean_label, noisy_label, max_step=self.args.max_iter, lr = 0.1, NumTest = self.args.G)
