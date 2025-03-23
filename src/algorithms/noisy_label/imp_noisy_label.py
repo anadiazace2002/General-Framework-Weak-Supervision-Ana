@@ -127,11 +127,9 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         print("\nEstimating transition matrix...")
         
         batch = next(iter(self.loader_dict['train']))
-        print(type(batch))
-        print(len(batch))  # Check how many elements are returned per batch
-        
-        for i, item in enumerate(batch):
-            print(f"Batch element {i} shape: {item}")
+        print("Batch Type:", type(batch))  # Should be a dictionary
+        print("Batch Keys:", batch.keys())  # Show available keys
+        print("Batch Values Example:", {k: type(v) for k, v in batch.items()})  # Show types
 
         #output_ = torch.tensor([]).float().cuda()
         clean_label = np.array(self.train_dataset.true_labels) 
