@@ -140,14 +140,36 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
         with torch.no_grad():
-            for batch_idx, (data, label,true_label,idx) in enumerate(self.loader_dict['train']):
+            for batch_idx, (batch_data, batch_labels) in enumerate(self.loader_dict['train']):
+                # Desempaquetamos las claves del batch para obtener 'x_w', 'x_s', 'y'
+                x_w = batch_data['x_w']  # imagen 'x_w' (puede ser un tensor con el tamaño adecuado)
+                x_s = batch_data['x_s']  # imagen 'x_s' (puede ser otro tensor con tamaño adecuado)
+                y = batch_labels['y']    # etiqueta (probablemente un tensor con los valores de clase)
+            
+                # En este caso, 'y' es lo mismo que 'label' y corresponde a la etiqueta ruidosa
+                noisy_label = y
+            
+                # Accedemos a las etiquetas verdaderas y las ruidosas
+                true_label = train_dataset.true_labels[batch_idx]  # O como accedas a las etiquetas verdaderas
+                
+                # Variable para contar el índice global de las imágenes
+                global_idx = 0  # Este será el índice global de las imágenes
+                
+                # Usamos la vista 'x_w' (o 'x_s', dependiendo de tu elección)
+                data = x_w  # O también podrías usar `x_s` en lugar de `x_w` si lo prefieres
+            
+                # Asegúrate de que los datos estén en el formato adecuado
                 data = torch.tensor(data).float().cuda()
+            
+                # Extraemos las características con la red
                 extracted_feature = torch.flatten(self.model.f(data), start_dim=1)
+            
+                # Crear el registro para las características extraídas
                 for i in range(extracted_feature.shape[0]):
-                    record[label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
-        new_estimate_T, _ = self.get_T_global_min(record, clean_label, noisy_label, max_step=self.args.max_iter, lr = 0.1, NumTest = self.args.G)
-    
-        return torch.tensor(new_estimate_T).float().cuda()
+                    record[noisy_label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': idx[i]})
+            
+            new_estimate_T, _ = self.get_T_global_min(record, true_label, noisy_label, max_step=self.args.max_iter, lr=0.1, NumTest=self.args.G)
+                    return torch.tensor(new_estimate_T).float().cuda()
         
     # ---------------------------------------------------------------------------
     
