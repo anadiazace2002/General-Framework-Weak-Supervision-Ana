@@ -133,19 +133,14 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         for i, item in enumerate(batch):
             print(f"Batch element {i} shape: {item}")
 
-        
         #output_ = torch.tensor([]).float().cuda()
         clean_label = np.array(self.train_dataset.true_labels) 
         noisy_label = np.array(self.train_dataset.noisy_labels)
         record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
         with torch.no_grad():
-            for batch_idx, (batch_data, batch_labels) in enumerate(self.loader_dict['train']):
-                # Desempaquetamos las claves del batch para obtener 'x_w', 'x_s', 'y'
-                x_w = batch_data['x_w']  # imagen 'x_w' (puede ser un tensor con el tamaño adecuado)
-                x_s = batch_data['x_s']  # imagen 'x_s' (puede ser otro tensor con tamaño adecuado)
-                y = batch_labels['y']    # etiqueta (probablemente un tensor con los valores de clase)
-            
+            for batch_idx, (x_w, x_s, y) in enumerate(self.loader_dict['train']):
+               
                 # En este caso, 'y' es lo mismo que 'label' y corresponde a la etiqueta ruidosa
                 noisy_label = y
             
