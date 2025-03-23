@@ -126,19 +126,20 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         # estimate each component of matrix T based on training with noisy labels
         print("\nEstimating transition matrix...")
         
-        batch = next(iter(self.loader_dict['train']))
-        print("Batch Type:", type(batch))  # Should be a dictionary
-        print("Batch Keys:", batch.keys())  # Show available keys
-        print("Batch Values Example:", {k: type(v) for k, v in batch.items()})  # Show types
-
-        #output_ = torch.tensor([]).float().cuda()
         clean_label = np.array(self.train_dataset.true_labels) 
         noisy_label = np.array(self.train_dataset.noisy_labels)
         record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
         with torch.no_grad():
-            for batch_idx, (x_w, x_s, y) in enumerate(self.loader_dict['train']):
-               
+            for batch_idx, batch in enumerate(self.loader_dict['train']):
+                # Extract data correctly
+                x_w = batch["x_w"]  # Should be a tensor
+                x_s = batch["x_s"]  # Should be a tensor
+                y = batch["y"]  # Labels
+                
+                # Ensure tensors are on GPU
+                x_w = x_w.float().cuda()
+                x_s = x_s.float().cuda()
                 # En este caso, 'y' es lo mismo que 'label' y corresponde a la etiqueta ruidosa
                 noisy_label = y
             
