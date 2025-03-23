@@ -131,7 +131,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         print(len(batch))  # Check how many elements are returned per batch
         
         for i, item in enumerate(batch):
-            print(f"Batch element {i} shape: {item.shape if hasattr(item, 'shape') else type(item)}")
+            print(f"Batch element {i} shape: {item}")
 
         
         #output_ = torch.tensor([]).float().cuda()
