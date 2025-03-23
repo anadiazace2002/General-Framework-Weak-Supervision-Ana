@@ -125,7 +125,8 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
     def find_trans_mat(self, lr):
         # estimate each component of matrix T based on training with noisy labels
         print("\nEstimating transition matrix...")
-        
+        print(f"\n.Module{dir(self.model.module)}")  # Check available attributes
+
         clean_label = np.array(self.train_dataset.true_labels) 
         noisy_label = np.array(self.train_dataset.noisy_labels)
         record = [[] for _ in range(self.num_classes)]
@@ -156,7 +157,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 data = torch.tensor(data).float().cuda()
             
                 # Extraemos las características con la red
-                extracted_feature = torch.flatten(self.model.module.f(data), start_dim=1)
+                extracted_feature = torch.flatten(self.model.module.forward(data), start_dim=1)
             
                 # Crear el registro para las características extraídas
                 for i in range(extracted_feature.shape[0]):
