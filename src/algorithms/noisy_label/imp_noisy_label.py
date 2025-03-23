@@ -208,6 +208,8 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         
         train_dataset.true_labels = train_targets
         train_dataset.noisy_labels = train_noisy_targets  
+        test_dataset.true_labels = test_targets
+        
         self.train_dataset = train_dataset  # ✅ Now train_dataset is set
         self.test_dataset = test_dataset
     
