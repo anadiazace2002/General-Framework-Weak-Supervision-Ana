@@ -130,7 +130,8 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         noisy_label = np.array(self.train_dataset.noisy_labels)
         print()
         print("Type of clean_label:", type(clean_label))
-        print("Value of clean_label:", clean_label)record = [[] for _ in range(self.num_classes)]
+        print("Value of clean_label:", clean_label)
+        record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
         with torch.no_grad():
             for batch_idx, batch in enumerate(self.loader_dict['train']):
