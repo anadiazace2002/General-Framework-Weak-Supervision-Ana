@@ -125,7 +125,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
     def find_trans_mat(self, lr):
         # estimate each component of matrix T based on training with noisy labels
         print("\nEstimating transition matrix...")
-        print(f"\n.Module{dir(self.model.module)}")  # Check available attributes
 
         clean_label = np.array(self.train_dataset.true_labels) 
         noisy_label = np.array(self.train_dataset.noisy_labels)
