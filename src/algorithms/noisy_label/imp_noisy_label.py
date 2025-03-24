@@ -175,7 +175,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 for i in range(extracted_feature.shape[0]):
                     record[noisy_label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': global_idx})
                     global_idx += 1
-        new_estimate_T, _ = self.get_T_global_min(record, true_label, noisy_label, max_step=1500, lr=0.1, NumTest=50)
+        new_estimate_T, _ = self.get_T_global_min(record, clean_label, noisy_label, max_step=1500, lr=0.1, NumTest=50)
         return torch.tensor(new_estimate_T).float().cuda()
         
     # ---------------------------------------------------------------------------
