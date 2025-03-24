@@ -158,7 +158,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 features = []
                 
                 def hook_fn(module, input, output):
-                    print(f"Inside hook: {output.shape}")  # This prints the shape of the output when the hook is triggered
                     features.append(output)
                 
                 # Register the hook on the last layer (layer4) before the fully connected layer
@@ -167,7 +166,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 data = data.float().cuda()
                 _ = self.model.module(data) 
                 # Extraemos las características con la red
-                print(features[0].shape)
                 
                 extracted_feature = torch.flatten(features[0], start_dim=1)
                 
