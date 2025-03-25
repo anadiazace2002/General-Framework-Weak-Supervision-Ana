@@ -93,6 +93,12 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         KINDS = self.num_classes
         # NumTest = 50
         # all_point_cnt = 15000
+
+        print("2 Dim of clean_label:", clean_label.shape)
+        print("2 Dim of noisy_label:", noisy_label.shape)
+        
+        print("2 Value of clean_label:", clean_label)
+        print("2 Value of noisy_label:", nosiy_label)
         T_real, P_real = self.get_TP_real(clean_label,noisy_label)
     
         p_estimate = [[] for _ in range(3)]
