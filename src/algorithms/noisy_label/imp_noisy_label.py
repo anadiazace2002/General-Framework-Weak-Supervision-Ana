@@ -12,6 +12,7 @@ from src.core.criterions import CELoss
 from src.core.hooks import CheckpointHook, TimerHook, LoggingHook, DistSamplerSeedHook, ParamUpdateHook, EvaluationHook, EMAHook
 from src.datasets import get_sym_noisy_labels, get_cifar10_asym_noisy_labels, get_cifar100_asym_noisy_labels, get_data, get_dataloader, ImgBaseDataset, ImgTwoViewBaseDataset
 
+from hoc import * 
 
 class ImpreciseNoisyLabelLearning(AlgorithmBase):
     def __init__(self, args, tb_log=None, logger=None, **kwargs):
