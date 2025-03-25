@@ -77,11 +77,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         return T_real, P_real
 
     def get_T_global_min(self, record, clean_label,noisy_label, max_step = 501, T0 = None, p0 = None, lr = 0.1, NumTest = 50, all_point_cnt = 15000):
-        print("2 Dim of clean_label:", clean_label.shape)
-        print("2 Dim of noisy_label:", noisy_label.shape)
-        
-        print("2 Value of clean_label:", clean_label)
-        print("2 Value of noisy_label:", noisy_label)
         total_len = sum([len(a) for a in record])
         origin_trans = torch.zeros(total_len, record[0][0]['feature'].shape[0])
         origin_label = torch.zeros(total_len).long()
@@ -98,12 +93,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         KINDS = self.num_classes
         # NumTest = 50
         # all_point_cnt = 15000
-
-        print("3 Dim of clean_label:", clean_label.shape)
-        print("3 Dim of noisy_label:", noisy_label.shape)
-        
-        print("3 Value of clean_label:", clean_label)
-        print("3 Value of noisy_label:", noisy_label)
         T_real, P_real = self.get_TP_real(clean_label,noisy_label)
     
         p_estimate = [[] for _ in range(3)]
@@ -141,11 +130,6 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         clean_label = np.array(self.train_dataset.true_labels) 
         noisy_label = np.array(self.train_dataset.noisy_labels)
         print()
-        print("Dim of clean_label:", clean_label.shape)
-        print("Dim of noisy_label:", noisy_label.shape)
-        
-        print("Value of clean_label:", clean_label)
-        print("Value of noisy_label:", noisy_label)
         record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
         with torch.no_grad():
