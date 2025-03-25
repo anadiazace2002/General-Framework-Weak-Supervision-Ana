@@ -66,6 +66,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
     def get_TP_real(self, clean_label, noisy_label):
         T_real = np.zeros((self.num_classes,self.num_classes))
         for i in range(clean_label.shape[0]):
+            print(T_real.shape, clean_label.shape, noisy_label.shape)
             T_real[clean_label[i]][noisy_label[i]] += 1
         P_real = [sum(T_real[i])*1.0 for i in range(self.num_classes)] # random selection
         for i in range(self.num_classes):
