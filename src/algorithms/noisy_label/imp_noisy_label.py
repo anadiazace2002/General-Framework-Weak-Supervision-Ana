@@ -159,7 +159,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 x_w = x_w.float().cuda()
                 x_s = x_s.float().cuda()
                 # En este caso, 'y' es lo mismo que 'label' y corresponde a la etiqueta ruidosa
-                noisy_label = y
+                _noisy_label = y
             
                 # Accedemos a las etiquetas verdaderas y las ruidosas
                 true_label = self.train_dataset.true_labels[batch_idx]  # O como accedas a las etiquetas verdaderas
@@ -188,7 +188,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
                 hook.remove()
                 # Crear el registro para las características extraídas
                 for i in range(extracted_feature.shape[0]):
-                    record[noisy_label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': global_idx})
+                    record[_noisy_label[i]].append({'feature': extracted_feature[i].detach().cpu(), 'index': global_idx})
                     global_idx += 1
         new_estimate_T, _ = self.get_T_global_min(record, clean_label, noisy_label, max_step=1500, lr=0.1, NumTest=50)
         return torch.tensor(new_estimate_T).float().cuda()
