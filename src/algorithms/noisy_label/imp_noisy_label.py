@@ -98,7 +98,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         print("2 Dim of noisy_label:", noisy_label.shape)
         
         print("2 Value of clean_label:", clean_label)
-        print("2 Value of noisy_label:", nosiy_label)
+        print("2 Value of noisy_label:", noisy_label)
         T_real, P_real = self.get_TP_real(clean_label,noisy_label)
     
         p_estimate = [[] for _ in range(3)]
@@ -140,7 +140,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         print("Dim of noisy_label:", noisy_label.shape)
         
         print("Value of clean_label:", clean_label)
-        print("Value of noisy_label:", nosiy_label)
+        print("Value of noisy_label:", noisy_label)
         record = [[] for _ in range(self.num_classes)]
         # collect all the outputs
         with torch.no_grad():
