@@ -184,6 +184,11 @@ def main(args):
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
     ngpus_per_node = torch.cuda.device_count()  # number of gpus of each node
 
+
+    print("Before multiprocessing starts...")
+    print("Multiprocessinf:" , args.multiprocessing_distributed)
+    print()
+
     if args.multiprocessing_distributed:
         # now, args.world_size means num of total processes in all nodes
         args.world_size = ngpus_per_node * args.world_size
