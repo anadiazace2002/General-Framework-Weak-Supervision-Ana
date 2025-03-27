@@ -136,14 +136,15 @@ def get_config():
     # add algorithm specific parameters
     args = parser.parse_args()
 
-    print("Before over_write... Multiprocessing is", args.multiprocessing_distributed)
     over_write_args_from_file(args, args.c)
+
+    args.multiprocessing_distributed = False
     print("After over_write... Multiprocessing is", args.multiprocessing_distributed)
     for argument in name2alg[args.algorithm].get_argument():
         parser.add_argument(argument.name, type=argument.type, default=argument.default, help=argument.help, *argument.args, **argument.kwargs)
 
     args = parser.parse_args()
-    over_write_args_from_file(args, args.c)
+    # over_write_args_from_file(args, args.c)
     return args
 
 
