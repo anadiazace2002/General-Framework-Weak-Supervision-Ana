@@ -21,6 +21,7 @@ def over_write_args_from_file(args, yml):
     """
     overwrite arguments according to config file
     """
+    print("Before Args.algorithm", args.algorithm)
     if yml == '':
         return
     with open(yml, 'r', encoding='utf-8') as f:
@@ -28,6 +29,7 @@ def over_write_args_from_file(args, yml):
         dic = yaml.load(f.read())
         for k in dic:
             setattr(args, k, dic[k])
+    print("After Args.algorithm", args.algorithm)
 
 
 def setattr_cls_from_kwargs(cls, kwargs):
