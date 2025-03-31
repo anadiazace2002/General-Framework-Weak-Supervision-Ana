@@ -138,7 +138,6 @@ def get_config():
 
     over_write_args_from_file(args, args.c)
     
-    print("After over_write... Multiprocessing is", args.multiprocessing_distributed)
     for argument in name2alg[args.algorithm].get_argument():
         parser.add_argument(argument.name, type=argument.type, default=argument.default, help=argument.help, *argument.args, **argument.kwargs)
 
@@ -242,7 +241,6 @@ def main_worker(gpu, ngpus_per_node, args):
     logger.info(f"Use GPU: {args.gpu} for training")
 
     # optimizer, scheduler, datasets, dataloaders with be set in algorithms
-    print("args.algorithm",args.algorithm)
     model = name2alg[args.algorithm](args, tb_log, logger)
     logger.info(f'Number of Trainable Params: {count_parameters(model.model)}')
 
