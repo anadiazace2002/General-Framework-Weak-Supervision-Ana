@@ -77,6 +77,9 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         return T_real, P_real
 
     def get_T_global_min(self, record, clean_label,noisy_label, max_step = 501, T0 = None, p0 = None, lr = 0.1, NumTest = 50, all_point_cnt = 15000):
+        print()
+        print("Entering into get_T_global_min")
+        print()
         total_len = sum([len(a) for a in record])
         origin_trans = torch.zeros(total_len, record[0][0]['feature'].shape[0])
         origin_label = torch.zeros(total_len).long()
