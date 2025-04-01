@@ -231,6 +231,7 @@ def calc_func(KINDS, p_estimate, LOCAL, _device, max_step = 501, T0=None, p0 = N
     P_rec = torch.zeros_like(P)
 
     time1 = time.time()
+    print("max_step", max_step)
     for step in range(max_step):
         if step:
             optimizer.zero_grad()
