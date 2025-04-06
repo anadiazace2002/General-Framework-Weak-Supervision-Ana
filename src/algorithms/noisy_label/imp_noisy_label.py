@@ -25,6 +25,8 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.num_train_iter = self.epochs * len(self.loader_dict['train'])
         self.num_eval_iter = len(self.loader_dict['train'])
         self.ce_loss = CELoss()
+        
+        self.transition_matrix = None
     
     def init(self, args):
         # extra arguments 
@@ -286,6 +288,11 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.model.train()
         self.call_hook("before_run")
 
+        # Solo se calcula una vez antes de entrenar
+        if self.transition_matrix is None:
+            self.print_fn("Calculating transition matrix once before training...")
+            self.transition_matrix = self.find_trans_mat(lr=0.1).detach()
+
         for epoch in range(self.start_epoch, self.epochs):
             self.epoch = epoch
             
@@ -319,7 +326,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         true_outputs = self.model(inputs)
         logits_x_w, logits_x_s = true_outputs.chunk(2)    # logits computation
         # noise_matrix = self.noise_model(logits_x_w)       # noise matrix creation BEFORE
-        noise_matrix = self.find_trans_mat(0.1).cuda()
+        noise_matrix = self.transition_matrix.cuda()
         # noise_matrix *= 2
         
         # convert logits_w to probs
