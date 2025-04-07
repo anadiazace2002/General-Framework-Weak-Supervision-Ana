@@ -261,6 +261,8 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         logger.info("Resume load path {} does not exist".format(args.load_path))
 
+    print(f"\nTraining for {args.epoch} epochs\n")
+    
     # START TRAINING of FixMatch
     logger.info("Model training")
     model.train()
