@@ -295,7 +295,7 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
             save_path = os.path.join(self.args.save_dir, self.args.save_name)
             file_path = os.path.join(save_path, 'mi_matriz.csv')
             # Guardar en formato legible
-            np.savetxt(file_path, self.transition_matrix, delimiter=',')
+            np.savetxt(file_path, self.transition_matrix.cpu().numpy(), delimiter=',')
             
             print(f"Matriz guardada en: {file_path}")
 
