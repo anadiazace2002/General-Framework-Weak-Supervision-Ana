@@ -295,9 +295,15 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
             save_path = os.path.join(self.args.save_dir, self.args.save_name)
             file_path = os.path.join(save_path, 'mi_matriz.csv')
             # Guardar en formato legible
+            os.makedirs(save_path, exist_ok=True)
             np.savetxt(file_path, self.transition_matrix.cpu().numpy(), delimiter=',')
             
             print(f"Matriz guardada en: {file_path}")
+
+        print(f"Start epoch: {self.start_epoch}, total epochs: {self.epochs}")
+        print(f"Training loader has {len(self.loader_dict['train'])} batches")
+        print(f"Training iterations: {self.it}/{self.num_train_iter}")
+
 
         for epoch in range(self.start_epoch, self.epochs):
             self.epoch = epoch
