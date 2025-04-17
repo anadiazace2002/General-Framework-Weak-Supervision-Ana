@@ -288,19 +288,27 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         self.model.train()
         self.call_hook("before_run")
 
+        print(f"11111Start epoch: {self.start_epoch}, total epochs: {self.epochs}")
+        print(f"Training loader has {len(self.loader_dict['train'])} batches")
+        print(f"Training iterations: {self.it}/{self.num_train_iter}")
+        
         # Solo se calcula una vez antes de entrenar
         if self.transition_matrix is None:
             self.print_fn("Calculating transition matrix once before training...")
             self.transition_matrix = self.find_trans_mat(lr=0.1).detach()
+            print(f"2222Start epoch: {self.start_epoch}, total epochs: {self.epochs}")
+            print(f"Training iterations: {self.it}/{self.num_train_iter}")
             save_path = os.path.join(self.args.save_dir, self.args.save_name)
             file_path = os.path.join(save_path, 'mi_matriz.csv')
             # Guardar en formato legible
             os.makedirs(save_path, exist_ok=True)
             np.savetxt(file_path, self.transition_matrix.cpu().numpy(), delimiter=',')
+            print(f"3333Start epoch: {self.start_epoch}, total epochs: {self.epochs}")
+            print(f"Training iterations: {self.it}/{self.num_train_iter}")
             
             print(f"Matriz guardada en: {file_path}")
 
-        print(f"Start epoch: {self.start_epoch}, total epochs: {self.epochs}")
+        print(f"4444Start epoch: {self.start_epoch}, total epochs: {self.epochs}")
         print(f"Training loader has {len(self.loader_dict['train'])} batches")
         print(f"Training iterations: {self.it}/{self.num_train_iter}")
 
