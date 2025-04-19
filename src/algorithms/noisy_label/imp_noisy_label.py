@@ -1,5 +1,4 @@
-
-
+from datetime import datetime
 import os
 import torch 
 import torch.nn as nn 
@@ -292,12 +291,13 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         if self.transition_matrix is None:
             self.print_fn("Calculating transition matrix once before training...")
             self.transition_matrix = self.find_trans_mat(lr=0.1).detach()
-            # save_path = os.path.join(self.args.save_dir, self.args.save_name)
-            # file_path = os.path.join(save_path, 'mi_matriz.csv')
-            # Guardar en formato legible
-            # os.makedirs(save_path, exist_ok=True)
-            # np.savetxt(file_path, self.transition_matrix.cpu().numpy(), delimiter=',')
-            # print(f"Matriz guardada en: {file_path}")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            experiment_dir = os.path.join(self.args.save_dir, 'matrix', f'matrix_{timestamp}')
+            os.makedirs(experiment_dir, exist_ok=True)
+            
+            np.savetxt(os.path.join(experiment_dir, 'matrix.csv'), self.transition_matrix.cpu().numpy(), delimiter=',')
+
+
 
         for epoch in range(self.start_epoch, self.epochs):
             self.epoch = epoch
