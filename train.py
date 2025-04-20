@@ -152,6 +152,8 @@ def main(args):
     For (Distributed)DataParallelism,
     main(args) spawn each process (main_worker) to each GPU.
     '''
+    print("Resume:", args.resume)
+    
     save_path = os.path.join(args.save_dir, args.save_name)
     if os.path.exists(save_path) and args.overwrite and args.resume == False:
         import shutil
