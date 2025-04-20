@@ -29,7 +29,7 @@ def get_config():
     '''
     parser.add_argument('--save_dir', type=str, default='./saved_models')
     parser.add_argument('-sn', '--save_name', type=str, default='semisup')
-    parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--resume', action='store_false', default=False)
     parser.add_argument('--load_path', type=str)
     parser.add_argument('-o', '--overwrite', action='store_true', default=True)
     parser.add_argument('--use_tensorboard', action='store_true', help='Use tensorboard to plot and save curves')
