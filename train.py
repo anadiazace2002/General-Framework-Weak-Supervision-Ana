@@ -153,6 +153,7 @@ def main(args):
     main(args) spawn each process (main_worker) to each GPU.
     '''
     print("Resume:", args.resume)
+    print("N_epochs:", args.epoch)
     
     save_path = os.path.join(args.save_dir, args.save_name)
     if os.path.exists(save_path) and args.overwrite and args.resume == False:
