@@ -291,11 +291,18 @@ class ImpreciseNoisyLabelLearning(AlgorithmBase):
         if self.transition_matrix is None:
             self.print_fn("Calculating transition matrix once before training...")
             self.transition_matrix = self.find_trans_mat(lr=0.1).detach()
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            experiment_dir = os.path.join(self.args.save_dir, 'matrix', f'matrix_{timestamp}')
-            os.makedirs(experiment_dir, exist_ok=True)
-            
-            np.savetxt(os.path.join(experiment_dir, 'matrix.csv'), self.transition_matrix.cpu().numpy(), delimiter=',')
+            # timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            # experiment_dir = os.path.join(self.args.save_dir, 'matrix', f'matrix_{timestamp}')
+            # print("experiment_dir: ", experiment_dir)
+            # os.makedirs(experiment_dir, exist_ok=True)
+            experiment_dir = "./matrix"
+            os.makedirs(experiment_dir, exist_ok=True)  # Asegura que el directorio exista
+            np.savetxt(
+                os.path.join(experiment_dir, 'matrix.csv'),
+                self.transition_matrix.cpu().numpy(),
+                fmt="%.4f",
+                delimiter=','
+            )
 
 
 
