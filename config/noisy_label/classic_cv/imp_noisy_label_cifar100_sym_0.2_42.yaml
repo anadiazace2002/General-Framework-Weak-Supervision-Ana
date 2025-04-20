@@ -1,12 +1,12 @@
 algorithm: imp_noisy_label
 save_dir: ./saved_models/noisy_label/classic_cv
 save_name: imp_noisy_label_cifar100_sym_0.2_42
-resume: True
+resume: False # changed
 load_path: ./saved_models/noisy_label/classic_cv/imp_noisy_label_cifar100_sym_0.2_42/latest_model.pth
-overwrite: True
+overwrite: False # changed
 use_tensorboard: True
 use_wandb: False
-epoch: 300
+epoch: 100 # changed
 num_eval_iter: None
 num_log_iter: 50
 batch_size: 128
