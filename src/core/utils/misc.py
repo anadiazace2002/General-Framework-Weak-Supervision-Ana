@@ -21,6 +21,8 @@ def over_write_args_from_file(args, yml):
     """
     overwrite arguments according to config file
     """
+    print("Before resume", args.resume)
+    print("Before epoch", args.epoch)
     print("Before Args.algorithm", args.algorithm)
     if yml == '':
         return
@@ -30,6 +32,8 @@ def over_write_args_from_file(args, yml):
         for k in dic:
             setattr(args, k, dic[k])
     print("After Args.algorithm", args.algorithm)
+    print("After resume", args.resume)
+    print("After epoch", args.epoch)
 
 
 def setattr_cls_from_kwargs(cls, kwargs):
