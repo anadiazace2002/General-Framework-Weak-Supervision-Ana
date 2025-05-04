@@ -30,20 +30,27 @@ from train import get_config
 
 np.random.seed(0)
 
+# Obtén parser de train.py
 parser = argparse.ArgumentParser(description='Cross Entropy')
-parser.add_argument('--model_path', type=str, default='results/128_0.5_200_512_1000_model.pth',
-                    help='The pretrained model path')
-parser.add_argument('--batch_size', type=int, default=256, help='Number of images in each mini-batch')
-parser.add_argument('--lr', type = float, default = 0.001)
-parser.add_argument('--epochs', type=int, default=100, help='Number of sweeps over the dataset to train')
-parser.add_argument('--num_classes', type=int, default=100, help='Number of classes')
-parser.add_argument('--noise_rate', type = float, help = 'corruption rate, should be less than 1', default = 0.6)
-parser.add_argument('--noise_type', type = str, help='[pairflip, symmetric,instance]', default='symmetric')
-parser.add_argument('--finetune', action='store_true')
-parser.add_argument('--sample_rate', type = float, help = 'corruption rate, should be less than 1', default = 1)
-parser.add_argument('--self_sup_type', type = str, help = 'self_supervised_path', default = '') 
 
-args = parser.parse_args()
+# Añade tus argumentos personalizados
+parser.add_argument('--model_path', type=str, default='results/128_0.5_200_512_1000_model.pth')
+parser.add_argument('--lr', type=float, default=0.001)
+parser.add_argument('--epochs', type=int, default=100)
+parser.add_argument('--num_classes', type=int, default=100)
+parser.add_argument('--noise_rate', type=float, default=0.6)
+parser.add_argument('--noise_type', type=str, default='symmetric')
+parser.add_argument('--finetune', action='store_true')
+parser.add_argument('--sample_rate', type=float, default=1)
+parser.add_argument('--self_sup_type', type=str, default='')
+
+# Luego agregas los de get_config
+base_args = get_config()
+# Sobrescribe base_args con los nuevos
+for key, value in vars(parser.parse_args()).items():
+    setattr(base_args, key, value)
+
+args = base_args  # ahora tienes todos los argumentos juntos
 
 def set_device():
     if torch.cuda.is_available():
