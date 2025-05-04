@@ -25,6 +25,8 @@ from sklearn import manifold
 import numpy as np
 from sklearn import manifold
 from model import Model
+from train import get_config
+
 
 np.random.seed(0)
 
