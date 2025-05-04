@@ -97,40 +97,8 @@ elif args.self_sup_type == 'random':
 
 
 
-
-
-
-train_cifar100_transform = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
-])
-
-test_cifar100_transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
-])
-
-
-
-
-train_dataset = CIFAR100_noisy(root='./data/',indexes = None,
-                                train=True,
-                                transform = train_cifar100_transform,
-                                noise_type= args.noise_type,noise_rate=args.noise_rate, random_state=0)
-
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                  batch_size = args.batch_size, 
-                                  num_workers=32,
-                                  shuffle=False,pin_memory=True)
-
-test_dataset = CIFAR100(root='data', train=False, transform=test_cifar100_transform, download=True)
-
-test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
-                                  batch_size = args.batch_size, 
-                                  num_workers=32,
-                                  shuffle=False,pin_memory=True)
+train_loader = args.train_loader
+test_loader = args.test_loader
 
 model.cuda()
 
