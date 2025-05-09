@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
+from torchvision.models.resnet import resnet50
+from model import Model
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -157,8 +159,25 @@ def resnet18(pretrained=False, pretrained_path=None, **kwargs):
     return model
 
 
+class Net(nn.Module):
+    def __init__(self, num_class, pretrained_path):
+        super(Net, self).__init__()
+
+        model = Model().cuda()
+        model = nn.DataParallel(model)
+        if pretrained_path is not None:
+            model.load_state_dict(torch.load(pretrained_path),strict=False)
+        self.f = model.module.f
+        self.fc = nn.Linear(2048, num_class, bias=True)
+
+    def forward(self, x):
+        x = self.f(x)
+        feature = torch.flatten(x, start_dim=1)
+        out = self.fc(feature)
+        return feature, out
+
 def resnet34(pretrained=False, pretrained_path=None, **kwargs):
-    model = ResNet(block=BasicBlock, num_blocks=[3,4,6,3], **kwargs)
+    model = Net(num_class= args.num_classes, pretrained_path=pretrained_path).cuda()
     return model
 
 
