@@ -9,7 +9,7 @@ from src.core.algorithmbase import AlgorithmBase
 from src.core.utils import Argument, str2bool, get_optimizer, send_model_cuda
 from src.core.criterions import CELoss
 from src.core.hooks import CheckpointHook, TimerHook, LoggingHook, DistSamplerSeedHook, ParamUpdateHook, EvaluationHook, EMAHook
-from src.datasets import get_sym_noisy_labels, get_cifar10_asym_noisy_labels, get_cifar100_asym_noisy_labels, get_data, get_dataloader, ImgBaseDataset, ImgTwoViewBaseDataset
+from src.datasets import get_sym_noisy_labels, get_cifar10_asym_noisy_labels, get_cifar100_asym_noisy_labels, get_data, get_dataloader, ImgBaseDataset, ImgTwoViewBaseDataset, get_cifar100_ins_noisy_labels
 
 from hoc import * 
 
