@@ -7,6 +7,7 @@ from itertools import combinations, chain
 from src.datasets.utils.zero_shot import zeroshot_eval
 from src.datasets.utils.custom import train_eval
 from src.datasets.utils.metadata import classnames
+from utils import download_url, check_integrity, noisify, noisify_instance
 
 
 
@@ -924,6 +925,16 @@ def get_conf_diff_labels(samples,
     selected_conf_diff = train_conf2 - train_conf1
     selected_conf_diff = np.clip(selected_conf_diff, a_min=1e-8, a_max=1 - 1e-8).astype(np.float32)
     return selected_samples, selected_conf_diff
+
+def get_cifar100_ins_noisy_labels(samples, targets, num_classes=100, noise_ratio=0.5):
+    noisy_labels, over_all_noise_rate = noisify_instance(samples, targets, noise_rate=noise_ratio)
+    
+    # Encuentra los índices donde se aplicó el ruido (para compatibilidad)
+    noise_idx = [i for i in range(len(targets)) if noisy_labels[i] != targets[i]]
+
+    # Retorna el formato esperado por el resto del código
+    return noise_idx, np.array(samples), np.array(noisy_labels)
+
 
 
 
