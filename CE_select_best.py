@@ -28,7 +28,7 @@ from model import Model
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='Cross Entropy')
-parser.add_argument('--model_path', type=str, default='results/128_0.5_200_512_1000_model.pth',
+parser.add_argument('--model_path', type=str, default='pretrained/simclr.pth',
                     help='The pretrained model path')
 parser.add_argument('--batch_size', type=int, default=256, help='Number of images in each mini-batch')
 parser.add_argument('--lr', type = float, default = 0.001)
